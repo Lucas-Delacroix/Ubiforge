@@ -1,0 +1,31 @@
+{
+  "name": "ubiforge",
+  "version": "0.1.0",
+  "description": "A tool for creating custom Ubuntu ISO images, with pre-installation configurations, packages, and post-installation scripts and services.",
+  "bin": {
+    "ubiforge": "bin/ubiforge.js"
+  },
+  "type": "commonjs",
+  "scripts": {
+    "start": "node bin/ubiforge.js",
+    "dev": "node bin/ubiforge.js -- --debug"
+  },
+  "keywords": [
+    "ubuntu",
+    "iso",
+    "custom",
+    "cli",
+    "server",
+    "desktop"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "prompts": "^2.4.2"
+  }
+}
+
