@@ -2,31 +2,25 @@
 
 const { program } = require("commander");
 const pkg = require("../package.json");
-const { interactiveFlow } = require("./interactive");
+const { interactiveFlow } = require("./ui/interactive");
 const { executePlan } = require("./index");
-
-function coerceList(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val;
-  return String(val)
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+const { coerceCommaList } = require("./utils/parse");
+const { PromptCancelledError } = require("./utils/prompts");
+const { validateFlagValues } = require("./utils/validation");
 
 function normalizeOptions(opts) {
   const normalized = {
     mode: opts.nonInteractive ? "flags" : "interactive",
-    flavor: opts.flavor || null, 
-    release: opts.release || null, 
-    arch: opts.arch || null,
+    flavor: opts.flavor ? String(opts.flavor).trim().toLowerCase() : null,
+    release: opts.release ? String(opts.release).trim() : null,
+    arch: opts.arch ? String(opts.arch).trim().toLowerCase() : null,
     source: opts.sourceIso
       ? { kind: "local-iso", path: opts.sourceIso }
       : opts.download
       ? { kind: "download-official" }
       : null,
     outputDir: opts.output || null,
-    packages: coerceList(opts.withPackages),
+    packages: coerceCommaList(opts.withPackages),
     debug: !!opts.debug,
   };
   return normalized;
@@ -68,15 +62,30 @@ async function run() {
   const config = normalizeOptions(opts);
 
   if (config.mode === "interactive") {
-    const finalConfig = await interactiveFlow(config);
-    await executePlan(finalConfig);
-    return;
+    try {
+      const finalConfig = await interactiveFlow(config);
+      await executePlan(finalConfig);
+      return;
+    } catch (err) {
+      if (err instanceof PromptCancelledError) {
+        console.log("Cancelled.");
+        process.exit(0);
+      }
+      throw err;
+    }
   }
 
   if (!hasMinimumFlags(config)) {
     console.error(
       "Required flags are missing. Add --flavor, --release, --arch, and --output, or remove --non-interactive to use interactive mode."
     );
+    process.exit(2);
+  }
+
+  // Validate values for flavor/release/arch
+  const valErrors = validateFlagValues(config);
+  if (valErrors.length) {
+    for (const msg of valErrors) console.error(msg);
     process.exit(2);
   }
 
@@ -87,5 +96,4 @@ async function run() {
   await executePlan(config);
 }
 
-module.exports = { run };
-
+module.exports = { run, normalizeOptions, hasMinimumFlags };
